@@ -34,12 +34,15 @@ class Game extends Phaser.Scene {
         this.bgMusic.play();
 
 
-        const bg = this.add.image(400, 300, 'background');
-        bg.setDisplaySize(800, 600); // Esto estira/encoge la imagen para que encaje perfecto
+        this.bg = this.add.image(400, 300, 'background');
+        this.bg.setDisplaySize(800, 600); // Esto estira/encoge la imagen para que encaje perfecto
+        this.backgroundKeys = ['background', 'escenario2', 'escenario3', 'escenario4'];
+        this.currentBackgroundKey = 'background';
 
         this.cursors = this.input.keyboard.createCursorKeys();
 
-        this.cursors = this.input.keyboard.createCursorKeys();
+        // Añadimos soporte para WASD además de las flechas
+        this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D');
 
         // Evitar que el menú contextual del navegador aparezca al clic derecho
         this.input.mouse.disableContextMenu();
@@ -136,7 +139,16 @@ class Game extends Phaser.Scene {
     }
 
     update() {
-        this.player.update(this.cursors);
+        // Creamos un objeto combinado donde cada dirección es true
+        // si la tecla de flecha correspondiente O la tecla WASD está pulsada.
+        const combinedCursors = {
+            left: { isDown: this.cursors.left.isDown || (this.wasdKeys.A && this.wasdKeys.A.isDown) },
+            right: { isDown: this.cursors.right.isDown || (this.wasdKeys.D && this.wasdKeys.D.isDown) },
+            up: { isDown: this.cursors.up.isDown || (this.wasdKeys.W && this.wasdKeys.W.isDown) },
+            down: { isDown: this.cursors.down.isDown || (this.wasdKeys.S && this.wasdKeys.S.isDown) }
+        };
+
+        this.player.update(combinedCursors);
     }
 
     spawnZombie() {
@@ -258,10 +270,51 @@ handleBulletHit(bullet, zombie) {
             return false;
         }
 
-        const boss = new Boss(this, 400, -100, this.player);
+        // Elegir un borde aleatorio para que el jefe aparezca desde diferentes lados
+        const edge = Phaser.Math.Between(0, 3);
+        let x, y;
+
+        if (edge === 0) { x = Phaser.Math.Between(-150, 950); y = -150; } 
+        else if (edge === 1) { x = 950; y = Phaser.Math.Between(-150, 750); } 
+        else if (edge === 2) { x = Phaser.Math.Between(-150, 950); y = 750; } 
+        else if (edge === 3) { x = -150; y = Phaser.Math.Between(-150, 750); }
+
+        const boss = new Boss(this, x, y, this.player);
         this.enemies.add(boss);
 
+        // Asegurarnos de que la física y visibilidad estén activas
+        boss.setActive(true);
+        boss.setVisible(true);
+        if (boss.body && boss.body.reset) boss.body.reset(x, y);
+
         return true;
+    }
+
+    changeBackground() {
+        const availableKeys = this.backgroundKeys.filter(key => key !== this.currentBackgroundKey && this.textures.exists(key));
+        if (availableKeys.length === 0) {
+            return;
+        }
+
+        const nextKey = availableKeys[Phaser.Math.Between(0, availableKeys.length - 1)];
+
+        this.tweens.add({
+            targets: this.bg,
+            alpha: 0,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => {
+                this.currentBackgroundKey = nextKey;
+                this.bg.setTexture(nextKey);
+                this.bg.setDisplaySize(800, 600);
+                this.tweens.add({
+                    targets: this.bg,
+                    alpha: 1,
+                    duration: 400,
+                    ease: 'Power2'
+                });
+            }
+        });
     }
 
     updateSurvivalTime() {
@@ -278,6 +331,10 @@ handleBulletHit(bullet, zombie) {
         // --- ESCALADO DE DIFICULTAD ---
         // Como empezamos en 300, cada vez que el tiempo sea divisible por 30, aumentamos la dificultad
         // Ejemplo: a los 270s (pasaron 30s), a los 240s (pasó 1 min), etc.
+        if (this.survivalTime % 60 === 0 && this.survivalTime > 0) {
+            this.changeBackground();
+        }
+
         if (this.survivalTime % 30 === 0 && this.survivalTime > 0) {
             this.increaseDifficulty();
         }
@@ -322,8 +379,7 @@ handleBulletHit(bullet, zombie) {
 
         // Si quedan menos de 3 minutos (180s) y es un minuto exacto, sale un jefe
         if (this.survivalTime <= 180 && this.survivalTime % 60 === 0) {
-            const minotaur = new Boss(this, 400, -100, this.player); 
-            this.enemies.add(minotaur);
+            this.spawnBoss();
         }
 
         // Debug logs removed for production
