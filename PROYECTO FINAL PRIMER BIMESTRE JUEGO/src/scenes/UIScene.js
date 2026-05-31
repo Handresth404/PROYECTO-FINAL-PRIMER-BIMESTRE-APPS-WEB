@@ -22,6 +22,13 @@ class UIScene extends Phaser.Scene {
             fontStyle: 'bold'
         });
 
+        this.fpsText = this.add.text(650, 50, 'FPS: --', {
+            fontSize: '24px',
+            fill: '#8fffa8',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold'
+        }).setOrigin(0, 0.5);
+
         // Inicializamos el puntaje
         this.score = 0;
         this.scoreText = this.add.text(20, 80, 'Puntos: 0', { 
@@ -136,6 +143,11 @@ class UIScene extends Phaser.Scene {
             this.showBossAppearedMessage();
         });
         
+    }
+
+    update() {
+        const fps = Math.round(this.game.loop.actualFps || 0);
+        this.fpsText.setText(`FPS: ${fps || '--'}`);
     }
 
     showBossAppearedMessage() {

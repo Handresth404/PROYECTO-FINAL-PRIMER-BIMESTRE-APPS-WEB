@@ -16,10 +16,10 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
         this.isAttacking = false;
         this.lastDirection = 'down';
 
-        // Ajusta la caja de colisión si el minotauro es muy grande
+        // Mantiene la hitbox igual a la de los minotauros normales
         this.setScale(this.baseScale);
-        this.body.setSize(60 * this.baseScale, 100 * this.baseScale); 
-        this.body.setOffset(34 * this.baseScale, 28 * this.baseScale);
+        this.body.setSize(40, 80); 
+        this.body.setOffset(44, 40);
 
         if (!scene.textures.exists('minotaur')) {
             this.setFrame(0);
