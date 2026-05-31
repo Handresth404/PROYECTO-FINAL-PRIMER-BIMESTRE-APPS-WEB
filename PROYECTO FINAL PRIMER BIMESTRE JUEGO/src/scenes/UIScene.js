@@ -63,6 +63,15 @@ class UIScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
+        // Texto temporal para mensajes (ej. cooldown de curación)
+        this.healMsgText = this.add.text(400, 560, '', {
+            fontSize: '20px',
+            fill: '#ffdddd',
+            fontFamily: 'Arial, sans-serif'
+        }).setOrigin(0.5).setAlpha(0);
+
+        this._healMsgTimer = null; // referencia al temporizador de la UI
+
         // 2. Lógica al hacer clic
         this.muteButton.on('pointerdown', () => {
             // Invertimos nuestra variable primero (si era false, pasa a true)
@@ -79,6 +88,39 @@ class UIScene extends Phaser.Scene {
                 this.muteButton.setText('🔊');
                 this.muteButton.setAlpha(1);
             }
+        });
+        
+        // Escuchamos evento para cuando la curación esté en cooldown
+        gameScene.events.on('healUnavailable', (remainingSec) => {
+            // Cancelamos cualquier timer previo
+            if (this._healMsgTimer) {
+                this._healMsgTimer.remove();
+                this._healMsgTimer = null;
+            }
+
+            // Mostramos mensaje inicial
+            this.healMsgSeconds = remainingSec;
+            this.healMsgText.setText(`Curación inhabilitada, espere ${this.healMsgSeconds} segundos para curarte...`);
+            this.healMsgText.setAlpha(1);
+
+            // Creamos un temporizador que actualiza cada segundo
+            this._healMsgTimer = this.time.addEvent({
+                delay: 1000,
+                callback: () => {
+                    this.healMsgSeconds -= 1;
+                    if (this.healMsgSeconds > 0) {
+                        this.healMsgText.setText(`Curación inhabilitada, espere ${this.healMsgSeconds} segundos para curarte...`);
+                    } else {
+                        this.healMsgText.setAlpha(0);
+                        if (this._healMsgTimer) {
+                            this._healMsgTimer.remove();
+                            this._healMsgTimer = null;
+                        }
+                    }
+                },
+                callbackScope: this,
+                loop: true
+            });
         });
         
     }
