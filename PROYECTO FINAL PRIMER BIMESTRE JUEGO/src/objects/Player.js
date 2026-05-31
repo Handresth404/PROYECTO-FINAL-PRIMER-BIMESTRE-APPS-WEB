@@ -13,7 +13,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.isInvulnerable = false; 
 
         // --- COOLDOWN DE CURACIÓN (ms) ---
-        this.healCooldown = 20000; // 20 segundos
+        this.healCooldown = 12000; // 12 segundos
         this.lastHealTime = 0; // timestamp (ms) de la última curación
 
         this.createAnimations(scene);
