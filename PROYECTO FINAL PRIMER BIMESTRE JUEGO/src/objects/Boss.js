@@ -1,22 +1,25 @@
 import Phaser from 'phaser';
 
 class Boss extends Phaser.Physics.Arcade.Sprite {
-    constructor(scene, x, y, targetPlayer) {
+    constructor(scene, x, y, targetPlayer, config = {}) {
         super(scene, x, y, 'minotaur');
         
         scene.add.existing(this);
         scene.physics.add.existing(this);
         
         this.target = targetPlayer;
-        this.speed = 70; // Un poco más rápido que un zombi normal
-        this.health = 50; // ¡Necesitará 5 balas (de 10 daño c/u) para morir!
+        this.speed = config.speed ?? 70;
+        this.health = config.health ?? 50;
+        this.damage = config.damage ?? 10;
+        this.baseScale = config.scale ?? 1;
         this.isDead = false;
         this.isAttacking = false;
         this.lastDirection = 'down';
 
         // Ajusta la caja de colisión si el minotauro es muy grande
-        this.body.setSize(60, 100); 
-        this.body.setOffset(34, 28);
+        this.setScale(this.baseScale);
+        this.body.setSize(60 * this.baseScale, 100 * this.baseScale); 
+        this.body.setOffset(34 * this.baseScale, 28 * this.baseScale);
 
         if (!scene.textures.exists('minotaur')) {
             this.setFrame(0);
@@ -133,6 +136,9 @@ class Boss extends Phaser.Physics.Arcade.Sprite {
 
         this.once('animationcomplete', (anim) => {
             if (anim.key === `boss_attack_${dir}`) {
+                if (this.target && typeof this.target.takeDamage === 'function') {
+                    this.target.takeDamage(this.damage);
+                }
                 this.isAttacking = false;
             }
         });

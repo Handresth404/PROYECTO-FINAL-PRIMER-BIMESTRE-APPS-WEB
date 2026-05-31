@@ -72,6 +72,15 @@ class UIScene extends Phaser.Scene {
 
         this._healMsgTimer = null; // referencia al temporizador de la UI
 
+        this.bossMsgText = this.add.text(400, 120, 'Boss Apareció', {
+            fontSize: '28px',
+            fill: '#ffcc00',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setAlpha(0);
+
+        this._bossMsgTimer = null;
+
         // 2. Lógica al hacer clic
         this.muteButton.on('pointerdown', () => {
             // Invertimos nuestra variable primero (si era false, pasa a true)
@@ -122,7 +131,26 @@ class UIScene extends Phaser.Scene {
                 loop: true
             });
         });
+
+        gameScene.events.on('bossAppeared', () => {
+            this.showBossAppearedMessage();
+        });
         
+    }
+
+    showBossAppearedMessage() {
+        if (this._bossMsgTimer) {
+            this._bossMsgTimer.remove();
+            this._bossMsgTimer = null;
+        }
+
+        this.bossMsgText.setText('Boss Apareció');
+        this.bossMsgText.setAlpha(1);
+
+        this._bossMsgTimer = this.time.delayedCall(2000, () => {
+            this.bossMsgText.setAlpha(0);
+            this._bossMsgTimer = null;
+        });
     }
 
     addScore(points) {

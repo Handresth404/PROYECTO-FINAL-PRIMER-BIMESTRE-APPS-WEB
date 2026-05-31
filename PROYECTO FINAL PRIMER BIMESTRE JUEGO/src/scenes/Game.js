@@ -21,9 +21,11 @@ class Game extends Phaser.Scene {
     create() {
         // --- VARIABLES DE DIFICULTAD ---
         this.survivalTime = 300; // Segundos que lleva vivo
+        this.initialSurvivalTime = this.survivalTime;
         this.spawnDelay = 2000; // Inicia en 2 segundos por zombi
         this.zombieSpeed = 40;  // Velocidad base de los zombis
         this.zombieHealth = 10; // Salud base
+        this.superBossSpawnCount = 0;
 
 
 
@@ -253,7 +255,7 @@ handleBulletHit(bullet, zombie) {
         }
 
         while (currentScore >= this.nextBossScore) {
-            const spawned = this.spawnBoss();
+            const spawned = this.spawnMinotaur();
 
             if (!spawned) {
                 break;
@@ -265,10 +267,31 @@ handleBulletHit(bullet, zombie) {
         return currentScore;
     }
 
-    spawnBoss() {
+    spawnMinotaur() {
+        return this.spawnBoss({
+            speed: 70,
+            health: 50,
+            damage: 10,
+            scale: 1
+        }, false, false);
+    }
+
+    spawnBoss(config = {}, showMessage = true, countTowardsSuperTier = true) {
         if (!this.textures.exists('minotaur')) {
             return false;
         }
+
+        if (countTowardsSuperTier) {
+            this.superBossSpawnCount += 1;
+        }
+
+        const bossTier = this.superBossSpawnCount;
+        const bossConfig = {
+            speed: config.speed ?? Math.max(30, 70 - ((bossTier - 1) * 6)),
+            health: config.health ?? (50 + ((bossTier - 1) * 20)),
+            damage: config.damage ?? (10 + Math.floor((bossTier - 1) / 2) * 2),
+            scale: config.scale ?? (1.4 + ((bossTier - 1) * 0.12))
+        };
 
         // Elegir un borde aleatorio para que el jefe aparezca desde diferentes lados
         const edge = Phaser.Math.Between(0, 3);
@@ -279,13 +302,22 @@ handleBulletHit(bullet, zombie) {
         else if (edge === 2) { x = Phaser.Math.Between(-150, 950); y = 750; } 
         else if (edge === 3) { x = -150; y = Phaser.Math.Between(-150, 750); }
 
-        const boss = new Boss(this, x, y, this.player);
+        const boss = new Boss(this, x, y, this.player, bossConfig);
         this.enemies.add(boss);
 
         // Asegurarnos de que la física y visibilidad estén activas
         boss.setActive(true);
         boss.setVisible(true);
         if (boss.body && boss.body.reset) boss.body.reset(x, y);
+
+        const uiScene = this.scene.get('UIScene');
+        if (showMessage && uiScene && typeof uiScene.showBossAppearedMessage === 'function') {
+            uiScene.showBossAppearedMessage();
+        }
+
+        if (showMessage) {
+            this.events.emit('bossAppeared', bossConfig);
+        }
 
         return true;
     }
@@ -333,6 +365,7 @@ handleBulletHit(bullet, zombie) {
         // Ejemplo: a los 270s (pasaron 30s), a los 240s (pasó 1 min), etc.
         if (this.survivalTime % 60 === 0 && this.survivalTime > 0) {
             this.changeBackground();
+            this.spawnBoss();
         }
 
         if (this.survivalTime % 30 === 0 && this.survivalTime > 0) {
@@ -375,11 +408,6 @@ handleBulletHit(bullet, zombie) {
         // Subimos la vida de los zombis cada 60 segundos restantes (múltiplos de 60)
         if (this.survivalTime % 60 === 0) {
             this.zombieHealth += 10; 
-        }
-
-        // Si quedan menos de 3 minutos (180s) y es un minuto exacto, sale un jefe
-        if (this.survivalTime <= 180 && this.survivalTime % 60 === 0) {
-            this.spawnBoss();
         }
 
         // Debug logs removed for production
