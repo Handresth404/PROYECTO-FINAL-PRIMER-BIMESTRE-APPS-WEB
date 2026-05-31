@@ -12,6 +12,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.health = 100;
         this.isInvulnerable = false; 
 
+        // --- COOLDOWN DE CURACIÓN (ms) ---
+        this.healCooldown = 20000; // 20 segundos
+        this.lastHealTime = 0; // timestamp (ms) de la última curación
+
         this.createAnimations(scene);
     }
 
@@ -128,9 +132,21 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     useHeal() {
         // Si está muerto o ya tiene la vida al máximo, no gastamos la curación
         if (this.health <= 0 || this.health >= 100) return;
+        const now = this.scene.time.now || Date.now();
+
+        // Verificamos cooldown
+        const elapsed = now - this.lastHealTime;
+        if (elapsed < this.healCooldown) {
+            const remainingMs = this.healCooldown - elapsed;
+            const remainingSec = Math.ceil(remainingMs / 1000);
+            // Emitimos evento para que la UI muestre el mensaje de cooldown
+            this.scene.events.emit('healUnavailable', remainingSec);
+            return;
+        }
 
         // Curamos 20 puntos de vida (puedes ajustar esto)
         this.health += 20;
+        this.lastHealTime = now;
         
         // Nos aseguramos de que no pase de 100
         if (this.health > 100) this.health = 100;
